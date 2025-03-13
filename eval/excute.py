@@ -369,7 +369,7 @@ def excute(language_type, path, task_id, temp_dir)->bool:
                 # todo 对比文件结果
                 awk_command = path
                 with time_limit(timeout):
-                    os.chdir('../')
+                    os.chdir('eval/tmp')
                     # result = subprocess.check_output(
                     #     awk_command, shell=True)
                     result = subprocess.run([awk_command], shell=True)
@@ -664,7 +664,7 @@ def excute(language_type, path, task_id, temp_dir)->bool:
     elif language_type == "Rust":
         try:
             ori_path = os.getcwd()
-            os.chdir('./rust')
+            os.chdir('eval/tmp/rust')
             subprocess.run(
                 ['rm', '-rf', 'target'])
             with time_limit(timeout+20):
@@ -834,8 +834,8 @@ def excute(language_type, path, task_id, temp_dir)->bool:
     elif language_type == "Go":
         ori_path = os.getcwd()
         file_name = path.split('/')[-1]
-        shutil.copy(path, './go/'+file_name)
-        os.chdir('./go')
+        shutil.copy(path, 'eval/tmp/go/'+file_name)
+        os.chdir('eval/tmp/go/')
         try:
             with time_limit(timeout+20):
                 run_result = subprocess.run(['go', 'test', file_name])

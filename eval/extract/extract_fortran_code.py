@@ -26,7 +26,7 @@ def extract_fortran_code_block(text: str, entry_point) -> str:
 def extract_fortran_code(text, item, ):
 
     code = extract_fortran_code_block(text, item['entry_point'])
-    print(code)
+    # print(code)
 
 
     pattern_func = r"(?:\b(?:recursive|pure|elemental|integer|logical)\s+)?function\s+.*?end\s+function\s+\b(?:\w+)\b"
@@ -36,7 +36,7 @@ def extract_fortran_code(text, item, ):
     funcs = re.findall(pattern_func, code, flags=re.DOTALL)
     subrts = re.findall(pattern_subrt, code, flags=re.DOTALL)
 
-    print(funcs)
+    # print(funcs)
 
 
     code = '\n'.join(funcs)+'\n'+'\n'.join(subrts)
@@ -64,8 +64,8 @@ def extract_fortran_code(text, item, ):
     #     item['prompt'] += '{'
     # print(code)
 
-    full_code =item['test']+'\n'+ '\n'.join(code_lines[:delca_row_idx])+'\n' + item['prompt']+'\n' + '\n'.join(code_lines[delca_row_idx+1:])+'\n' +'end program main'
-
+    # full_code =item['test']+'\n'+ '\n'.join(code_lines[:delca_row_idx])+'\n' + item['prompt']+'\n' + '\n'.join(code_lines)+'\n' +'end program main'
+    full_code =item['test']+'\n'+ '\n'.join(code_lines[:delca_row_idx])+'\n' + item['prompt']+'\n' + text +'\n' +'end program main'
     # print(full_code)
     return full_code
 

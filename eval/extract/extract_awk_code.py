@@ -15,7 +15,7 @@ def extract_awk_code(text) -> str:
         code = text.split('\n\n')[1]
     else:
         code = code_block.group(1)
-    # print(code)
+    print(code)
     if (code[:2] == "sh"):
         code = code[2:]
     return code.strip()

@@ -2,6 +2,7 @@ from json2file import read_jsonl, json2file
 from save2file import save2file,save2file_with_tempdir
 from excute import excute
 from extract import extract
+from odps_utils import ODPSExecutor
 import json
 import os 
 import argparse
@@ -13,16 +14,16 @@ import shutil
 import random 
 
 def prepare_tempdir_context(temp_dir):
-    shutil.copytree('../data/AWK', os.path.join(temp_dir, 'data/AWK'),dirs_exist_ok=True)
-    shutil.copytree('../data/C#', os.path.join(temp_dir, 'C#'),dirs_exist_ok=True)
-    shutil.copytree('../data/Common Lisp', os.path.join(temp_dir, 'Common Lisp'),dirs_exist_ok=True)
-    shutil.copytree('../data/F#', os.path.join(temp_dir, 'F#'),dirs_exist_ok=True)
-    shutil.copytree('../data/rust', os.path.join(temp_dir, 'rust'),dirs_exist_ok=True)
-    shutil.copytree('../data/go', os.path.join(temp_dir, 'go'),dirs_exist_ok=True)
-    shutil.copytree('../data/HTML', os.path.join(temp_dir, 'HTML'),dirs_exist_ok=True)
-    shutil.copytree('../data/JSON', os.path.join(temp_dir, 'JSON'),dirs_exist_ok=True)
-    shutil.copytree('../data/Markdown', os.path.join(temp_dir, 'Markdown'),dirs_exist_ok=True)
-    shutil.copytree('../data/Visual Basic', os.path.join(temp_dir, 'Visual Basic'),dirs_exist_ok=True)
+    shutil.copytree('data/AWK', os.path.join(temp_dir, 'data/AWK'),dirs_exist_ok=True)
+    shutil.copytree('data/C#', os.path.join(temp_dir, 'C#'),dirs_exist_ok=True)
+    shutil.copytree('data/Common Lisp', os.path.join(temp_dir, 'Common Lisp'),dirs_exist_ok=True)
+    shutil.copytree('data/F#', os.path.join(temp_dir, 'F#'),dirs_exist_ok=True)
+    shutil.copytree('data/rust', os.path.join(temp_dir, 'rust'),dirs_exist_ok=True)
+    shutil.copytree('data/go', os.path.join(temp_dir, 'go'),dirs_exist_ok=True)
+    shutil.copytree('data/HTML', os.path.join(temp_dir, 'HTML'),dirs_exist_ok=True)
+    shutil.copytree('data/JSON', os.path.join(temp_dir, 'JSON'),dirs_exist_ok=True)
+    shutil.copytree('data/Markdown', os.path.join(temp_dir, 'Markdown'),dirs_exist_ok=True)
+    shutil.copytree('data/Visual Basic', os.path.join(temp_dir, 'Visual Basic'),dirs_exist_ok=True)
     
 def calculate_accuracy(args, lang, temp_dir):
     items = [json.loads(x) for x in open(f"{args.result_path}/{lang}.jsonl").readlines() if x]
@@ -80,7 +81,7 @@ def calculate_accuracy(args, lang, temp_dir):
 
 
 def clean_cache():
-    beam_path = '/workspace/MMCodeEval/eval'
+    beam_path = 'eval'
     files_to_delete = glob.glob(os.path.join(beam_path, '*' + "beam"))
     for file_path in files_to_delete:
         try:
@@ -88,7 +89,7 @@ def clean_cache():
         except OSError as e:
             print(f"Error: {e.filename} - {e.strerror}.")
 
-    go_cache_path ='/workspace/MMCodeEval/data/go'
+    go_cache_path ='data/go'
     files_to_delete = glob.glob(os.path.join(go_cache_path, '*' + ".go"))
     for file_path in files_to_delete:
         try:
@@ -96,7 +97,7 @@ def clean_cache():
         except OSError as e:
             print(f"Error: {e.filename} - {e.strerror}.")
 
-    tmp_cache_path ='/workspace/MMCodeEval/eval/tmp'
+    tmp_cache_path ='eval/tmp'
     files_to_delete = glob.glob(os.path.join(tmp_cache_path, '*'))
     for file_path in files_to_delete:
         try:
@@ -104,11 +105,30 @@ def clean_cache():
         except OSError as e:
             print(f"Error: {e.filename} - {e.strerror}.")
 
+def odps_save_jsonl(arg):
+    odps = ODPSExecutor(project = arg.odps_project, table_name = arg.odps_table)
+    odps.download_to_jsonl(arg.odps_partition, f"{arg.result_path}" + "/data.jsonl")
+    langs = set()
+    dataset = []
+    with open(f"{arg.result_path}" + "/data.jsonl", 'r') as f:
+        for line in f.readlines():
+            lang = json.loads(line)['task_id'].split('/')[0]
+            langs.add(lang)
+            dataset.append(json.loads(line))
+    for lang in langs:
+        with open(f"{arg.result_path}/" + lang + ".jsonl", 'w') as f:
+            for item in dataset:
+                if item['task_id'].split('/')[0] == lang:
+                    f.write(json.dumps(item) + '\n')
+    
 def eval(args):
     clean_cache()
-    exclude_langs = ['sql']
+    exclude_langs = ['sql','data']
+    os.makedirs(args.result_path, exist_ok=True)
 
+    odps_save_jsonl(args)
     langs = [x.split('.')[0] for x in os.listdir(args.result_path) if x.endswith('.jsonl')]
+    # langs = ['AWK']
     save_path = os.path.join(args.save_path, os.path.basename(args.result_path)+'.jsonl')
     detail_save_path = os.path.join(args.save_path, os.path.basename(args.result_path)+'_detail.jsonl')
     # print(save_path)
@@ -124,10 +144,10 @@ def eval(args):
     score = {}
     
     # with tempfile.TemporaryDirectory() as temp_dir:
-    temp_dir = '/workspace/MMCodeEval/eval/tmp'
+    temp_dir = 'eval/tmp'
     prepare_tempdir_context(temp_dir)
     # orgin_dir = os.getcwd()
-    os.chdir(temp_dir)
+    # os.chdir(temp_dir)
     for lang in langs:
         lang_score, detail_scores = calculate_accuracy(args, lang, temp_dir)
         score[lang] = lang_score 
@@ -154,6 +174,9 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('--result_path', type=str, default='/workspace/MMCodeEval/result/process_result_0313/split_result/outputs_fim_light/deepseek-coder-7b-instruct')
     arg_parser.add_argument('--save_path', type=str, default='/workspace/MMCodeEval/result/process_result_0313/fim_light')
+    arg_parser.add_argument('--odps_project', type=str, default='future_xingchen')
+    arg_parser.add_argument('--odps_table', type=str, default='mcevl_demo')
+    arg_parser.add_argument('--odps_partition', type=str, default='370_v3')
     args = arg_parser.parse_args()
     eval(args)
     

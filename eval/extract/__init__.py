@@ -45,6 +45,12 @@ from .extract_awk_code import extract_awk_code
 
 
 def extract(text, item, lang):
+    if lang.lower() == 'fortran':
+        return extract_fortran_code(text, item)
+    elif lang == 'AWK':
+        return text
+    code = item['prompt'] +'\n\n'+ item['canonical_solution']+'\n\n'+  item['test']
+    return code
     if lang.lower() in ['coffeescript']:
         return extract_coffeescript_code(text, item)
     elif lang.lower() == 'dart':
